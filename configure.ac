@@ -1,0 +1,18 @@
+AC_INIT([minecraftd], [1.0], [syke107@gmail.com])
+AM_INIT_AUTOMAKE([foreign -Wall -Werror])
+
+AC_CANONICAL_HOST
+
+AC_PROG_CXX
+
+PKG_CHECK_MODULES([GLIBMM], [glibmm-2.4 giomm-2.4])
+PKG_CHECK_MODULES([LIBCONFIG], [libconfig++])
+
+AX_JNI_INCLUDE_DIR
+for JNI_INCLUDE_DIR in $JNI_INCLUDE_DIRS; do
+	CPPFLAGS="$CPPFLAGS -I$JNI_INCLUDE_DIR"
+done
+
+AC_CONFIG_HEADERS([config.h])
+AC_CONFIG_FILES([Makefile src/Makefile])
+AC_OUTPUT
