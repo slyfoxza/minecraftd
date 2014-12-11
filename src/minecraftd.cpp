@@ -27,6 +27,8 @@
 #include <jni.h>
 #include <zip.h>
 
+#include "pipe.h"
+
 namespace {
 	typedef jint (JNICALL *JNI_CreateJavaVM_f)(JavaVM **pvm, void  **penv, void *args);
 
@@ -303,19 +305,17 @@ int main(int argc, char **argv) {
 		mainClassName = line.substr(value, valueLength);
 	}
 
-	rc = pipe(consolePipe);
-	if(rc != 0) {
-		std::cerr << "Failed to create console pipe" << std::endl;
-		return 1;
-	}
+	minecraftd::PosixPipe pipe;
+	consolePipe[0] = pipe.readEnd();
+	consolePipe[1] = pipe.writeEnd();
 
 	if(close(STDIN_FILENO) != 0) {
 		std::cerr << "Failed to close current standard input file descriptor" << std::endl;
 		return 1;
 	}
 
-	if(dup2(consolePipe[0], STDIN_FILENO) != 0) {
-		std::cerr << "Failed to duplicate read end of console pipe as standard input" << std::endl;
+	if(dup2(pipe.readEnd(), STDIN_FILENO) != 0) {
+		std::cerr << "Failed to duplicate read end of console pipe as standard input:" << errno << std::endl;
 		return 1;
 	}
 
