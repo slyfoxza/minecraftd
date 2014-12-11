@@ -27,11 +27,10 @@
 #include <jni.h>
 #include <zip.h>
 
+#include "jvm.h"
 #include "pipe.h"
 
 namespace {
-	typedef jint (JNICALL *JNI_CreateJavaVM_f)(JavaVM **pvm, void  **penv, void *args);
-
 	const std::string DEFAULT_CONFIG_FILE_NAME{SYSCONFDIR "/minecraftd.conf"};
 	const Glib::ustring DBUS_INTROSPECTION_XML{
 		"<node>"
@@ -42,19 +41,9 @@ namespace {
 		"</node>"
 	};
 
-	struct JvmMainArguments {
-
-		JvmMainArguments(const std::string &libjvmPath_, const std::string &jarPath_, const std::string &mainClassName_) : jarPath{jarPath_}, libjvmPath{libjvmPath_}, mainClassName{mainClassName_} { }
-
-		std::string jarPath;
-		pthread_cond_t jvmCompleteCondition;
-		std::string libjvmPath;
-		std::string mainClassName;
-	};
-
 	void *jvmMain(void *arguments_) {
 
-		JvmMainArguments *arguments = reinterpret_cast<JvmMainArguments*>(arguments_);
+		minecraftd::JvmMainArguments *arguments = reinterpret_cast<minecraftd::JvmMainArguments*>(arguments_);
 
 		void *libjvm = dlopen(arguments->libjvmPath.c_str(), RTLD_LAZY);
 		if(libjvm == nullptr) {
@@ -63,7 +52,8 @@ namespace {
 			return nullptr;
 		}
 
-		JNI_CreateJavaVM_f JNI_CreateJavaVM = reinterpret_cast<JNI_CreateJavaVM_f>(dlsym(libjvm, "JNI_CreateJavaVM"));
+		minecraftd::JNI_CreateJavaVM JNI_CreateJavaVM = reinterpret_cast<minecraftd::JNI_CreateJavaVM>(dlsym(libjvm,
+					"JNI_CreateJavaVM"));
 		if(JNI_CreateJavaVM == nullptr) {
 			std::cerr << "Failed to load JNI_CreateJavaVM function: " << dlerror() << std::endl;
 			pthread_cond_broadcast(&arguments->jvmCompleteCondition);
@@ -325,7 +315,8 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
-	JvmMainArguments jvmMainArguments{"/etc/alternatives/jre/lib/amd64/server/libjvm.so", jarPath, mainClassName};
+	minecraftd::JvmMainArguments jvmMainArguments{"/etc/alternatives/jre/lib/amd64/server/libjvm.so", jarPath,
+		mainClassName};
 	if(pthread_cond_init(&jvmMainArguments.jvmCompleteCondition, nullptr) != 0) {
 		std::cerr << "Failed to create JVM completion condition" << std::endl;
 		return 1;
