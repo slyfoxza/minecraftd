@@ -27,6 +27,8 @@ namespace minecraftd {
 				}
 			}
 
+			PosixPipe(const PosixPipe&) = delete;
+
 			~PosixPipe() {
 				if((close(readEnd_) != 0) || (close(writeEnd_) != 0)) {
 					throw std::system_error(errno, std::system_category());

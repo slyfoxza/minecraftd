@@ -28,18 +28,11 @@
 #include <zip.h>
 
 #include "jvm.h"
+#include "minecraftd-dbus.h"
 #include "pipe.h"
 
 namespace {
 	const std::string DEFAULT_CONFIG_FILE_NAME{SYSCONFDIR "/minecraftd.conf"};
-	const Glib::ustring DBUS_INTROSPECTION_XML{
-		"<node>"
-		"\t<interface name='net.za.slyfox.Minecraftd1'>"
-		"\t\t<method name='Stop' />"
-		"\t\t<method name='SaveAll' />"
-		"\t</interface>"
-		"</node>"
-	};
 
 	void *jvmMain(void *arguments_) {
 
@@ -148,60 +141,14 @@ namespace {
 		return nullptr;
 	}
 
+	pthread_t mainThread;
 	Glib::RefPtr<Glib::MainLoop> mainLoop;
 
 	void onExit() {
 
 		mainLoop->quit();
-		while(mainLoop->is_running());
-	}
-
-	// [0] - read, [1] - write
-	int consolePipe[2];
-
-	void onDBusMethodCall(const Glib::RefPtr<Gio::DBus::Connection> &connection, const Glib::ustring &sender,
-			const Glib::ustring &objectPath, const Glib::ustring &interfaceName, const Glib::ustring &methodName,
-			const Glib::VariantContainerBase &parameters,
-			const Glib::RefPtr<Gio::DBus::MethodInvocation> &invocation) {
-
-		std::cout << "Received method call: sender=" << sender << ", objectPath=" << objectPath << ", interfaceName="
-			<< interfaceName << ", methodName=" << methodName << std::endl;
-		if(methodName == "SaveAll") {
-			std::cout << "Received save-all command" << std::endl;
-			static const char buffer[] = "save-all\n";
-			ssize_t totalWritten = 0;
-			while(totalWritten < sizeof(buffer)) {
-				ssize_t written = write(consolePipe[1], buffer + totalWritten, sizeof(buffer) - totalWritten);
-				totalWritten += written;
-			}
-			invocation->return_error(Gio::DBus::Error{Gio::DBus::Error::UNKNOWN_METHOD, "Method does not exist."});
-		} else if(methodName == "Stop") {
-			std::cout << "Received stop command" << std::endl;
-			static const char buffer[] = "stop\n";
-			ssize_t totalWritten = 0;
-			while(totalWritten < sizeof(buffer)) {
-				ssize_t written = write(consolePipe[1], buffer + totalWritten, sizeof(buffer) - totalWritten);
-				totalWritten += written;
-			}
-			invocation->return_error(Gio::DBus::Error{Gio::DBus::Error::UNKNOWN_METHOD, "Method does not exist."});
-		} else {
-			invocation->return_error(Gio::DBus::Error{Gio::DBus::Error::UNKNOWN_METHOD, "Method does not exist."});
-		}
-	}
-
-	Glib::RefPtr<Gio::DBus::NodeInfo> introspectionData;
-	const Gio::DBus::InterfaceVTable dbusVTable{sigc::ptr_fun(&onDBusMethodCall)};
-
-	void onBusAcquired(const Glib::RefPtr<Gio::DBus::Connection> &connection, const Glib::ustring &name) {
-
-		std::cout << "Acquired bus with name " << name << std::endl;
-		try {
-			connection->register_object("/net/za/slyfox/Minecraftd1", introspectionData->lookup_interface(),
-					dbusVTable);
-			std::cout << "Registered object" << std::endl;
-		} catch(const Glib::Error &e) {
-			std::cerr << "Failed to register object: " << e.what() << std::endl;
-		}
+		std::cout << "Waiting for main thread to exit" << std::endl;
+		pthread_join(mainThread, nullptr);
 	}
 }
 
@@ -296,8 +243,6 @@ int main(int argc, char **argv) {
 	}
 
 	minecraftd::PosixPipe pipe;
-	consolePipe[0] = pipe.readEnd();
-	consolePipe[1] = pipe.writeEnd();
 
 	if(close(STDIN_FILENO) != 0) {
 		std::cerr << "Failed to close current standard input file descriptor" << std::endl;
@@ -322,13 +267,14 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
+	mainThread = pthread_self();
+	std::atexit(onExit);
+
 	pthread_t jvmMainThread;
 	if(pthread_create(&jvmMainThread, nullptr, jvmMain, &jvmMainArguments) != 0) {
 		std::cerr << "Failed to create JVM main thread" << std::endl;
 		return 1;
 	}
-
-	std::atexit(onExit);
 
 	pthread_mutex_lock(&mutex);
 	std::cout << "Waiting for JVM to complete startup" << std::endl;
@@ -336,9 +282,7 @@ int main(int argc, char **argv) {
 	pthread_mutex_unlock(&mutex);
 
 	Gio::init();
-	introspectionData = Gio::DBus::NodeInfo::create_for_xml(DBUS_INTROSPECTION_XML);
-	guint busName = Gio::DBus::own_name(Gio::DBus::BUS_TYPE_SYSTEM, "net.za.slyfox.Minecraftd1",
-			sigc::ptr_fun(&onBusAcquired));
+	minecraftd::Minecraftd1 dbusObject{"/net/za/slyfox/Minecraftd1", pipe};
 
 	std::cout << "Starting main loop" << std::endl;
 	mainLoop = Glib::MainLoop::create();
