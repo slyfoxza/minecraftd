@@ -10,10 +10,8 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
-#include <algorithm>
-#include <cstdlib>
 #include <iostream>
-#include <sstream>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -25,8 +23,8 @@
 #include <glibmm.h>
 #include <libconfig.h++>
 #include <jni.h>
-#include <zip.h>
 
+#include "JarReader.h"
 #include "jvm.h"
 #include "minecraftd-dbus.h"
 #include "pipe.h"
@@ -197,61 +195,8 @@ int main(int argc, char **argv) {
 	std::string jarPath{GAMESDIR "/minecraft_server.jar"};
 	configFile.lookupValue("jar", jarPath);
 
-	int rc;
-	zip *zip = zip_open(jarPath.c_str(), 0, &rc);
-	if(zip == nullptr) {
-		std::cerr << "Failed to open JAR " << jarPath << ": " << rc << std::endl;
-		return 1;
-	}
-
-	zip_int64_t manifestIndex = zip_name_locate(zip, "META-INF/MANIFEST.MF", 0);
-	if(manifestIndex == -1) {
-		std::cerr << "JAR " << jarPath << " does not contain a manifest file" << std::endl;
-		return 1;
-	}
-
-	struct zip_stat zip_stat;
-	rc = zip_stat_index(zip, manifestIndex, 0, &zip_stat);
-	if((rc == -1) || ((zip_stat.valid & ZIP_STAT_SIZE) == 0)) {
-		std::cerr << "Could not determine MANIFEST.MF file size" << std::endl;
-		return 1;
-	}
-
-	zip_file *manifest = zip_fopen_index(zip, manifestIndex, 0);
-	if(manifest == nullptr) {
-		std::cerr << "Could not open MANIFEST.MF file" << std::endl;
-		return 1;
-	}
-
-	std::stringstream manifestBuffer;
-	zip_uint64_t bytesRead = 0;
-	while(bytesRead < zip_stat.size) {
-		const zip_uint64_t bufferSize = 4096;
-		char buffer[bufferSize];
-		int thisBytesRead = zip_fread(manifest, buffer, std::min(bufferSize, zip_stat.size - bytesRead));
-		if(thisBytesRead == -1) {
-			std::cerr << "Failed to read MANIFEST.MF file" << std::endl;
-			return 1;
-		}
-		manifestBuffer.write(buffer, thisBytesRead);
-		bytesRead += thisBytesRead;
-	}
-
-	std::string mainClassName;
-	for(std::string line; std::getline(manifestBuffer, line);) {
-		auto separator = line.find_first_of(':');
-		if(line.substr(0, separator) != "Main-Class") {
-			continue;
-		}
-
-		auto value = line.find_first_not_of(" \t", separator + 1);
-		auto valueLength = std::string::npos;
-		auto lineEnd = line.find_first_of(" \t\r\n", value);
-		if(lineEnd != std::string::npos) {
-			valueLength = lineEnd - value;
-		}
-		mainClassName = line.substr(value, valueLength);
-	}
+	minecraftd::JarReader jarReader{jarPath};
+	std::string mainClassName = jarReader.getMainClassName();
 
 	minecraftd::PosixPipe pipe;
 
