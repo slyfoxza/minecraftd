@@ -1,0 +1,7 @@
+[Unit]
+Description=Minecraft daemon
+
+[Service]
+ExecStart=@bindir@/minecraftd
+BusName=net.za.slyfox.Minecraftd1
+
