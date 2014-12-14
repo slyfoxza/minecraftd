@@ -12,6 +12,11 @@
  */
 #pragma once
 
+#include <stdexcept>
+
+#include <glibmm.h>
+#include <jni.h>
+
 namespace minecraftd {
 	typedef jint (JNICALL *JNI_CreateJavaVM)(JavaVM **pvm, void  **penv, void *args);
 
@@ -24,5 +29,18 @@ namespace minecraftd {
 		pthread_cond_t jvmCompleteCondition;
 		const std::string libjvmPath;
 		const std::string mainClassName;
+	};
+
+	class JavaException : public std::exception {
+
+		public:
+			JavaException(JNIEnv *jni, bool clearException = true);
+
+			virtual const char *what() const noexcept(true) override;
+			const Glib::ustring type() const noexcept(true) { return type_; }
+
+		private:
+			Glib::ustring message_;
+			Glib::ustring type_;
 	};
 }

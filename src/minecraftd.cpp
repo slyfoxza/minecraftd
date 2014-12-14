@@ -34,23 +34,42 @@
 namespace {
 	const std::string DEFAULT_CONFIG_FILE_NAME{SYSCONFDIR "/minecraftd.conf"};
 
+	class EnsureConditionBroadcast {
+
+		public:
+			EnsureConditionBroadcast(pthread_cond_t *condition) : condition_(condition), signalled_(false) { }
+			~EnsureConditionBroadcast() {
+
+				signal();
+			}
+
+			void signal() {
+
+				if(!signalled_) {
+					pthread_cond_broadcast(condition_);
+					signalled_ = true;
+				}
+			}
+
+		private:
+			pthread_cond_t *condition_;
+			bool signalled_;
+	};
+
 	void *jvmMain(void *arguments_) {
 
 		minecraftd::JvmMainArguments *arguments = reinterpret_cast<minecraftd::JvmMainArguments*>(arguments_);
+		EnsureConditionBroadcast ensureConditionBroadcast{&arguments->jvmCompleteCondition};
 
 		void *libjvm = dlopen(arguments->libjvmPath.c_str(), RTLD_LAZY);
 		if(libjvm == nullptr) {
-			std::cerr << "Failed to open libjvm.so: " << dlerror() << std::endl;
-			pthread_cond_broadcast(&arguments->jvmCompleteCondition);
-			return nullptr;
+			throw std::runtime_error{"Failed to load JVM dynamic library: " + std::string{dlerror()}};
 		}
 
 		minecraftd::JNI_CreateJavaVM JNI_CreateJavaVM = reinterpret_cast<minecraftd::JNI_CreateJavaVM>(dlsym(libjvm,
 					"JNI_CreateJavaVM"));
 		if(JNI_CreateJavaVM == nullptr) {
-			std::cerr << "Failed to load JNI_CreateJavaVM function: " << dlerror() << std::endl;
-			pthread_cond_broadcast(&arguments->jvmCompleteCondition);
-			return nullptr;
+			throw std::runtime_error{"Failed to load JNI_CreateJavaVM function: " + std::string{dlerror()}};
 		}
 
 		JavaVMInitArgs jvmArguments;
@@ -61,7 +80,7 @@ namespace {
 		std::string classPath{"-Djava.class.path=" + arguments->jarPath};
 		jvmOptions.push_back(JavaVMOption{const_cast<char*>(classPath.c_str()), nullptr});
 
-		jvmOptions.push_back(JavaVMOption{"-Dlog4j.configurationFile=../log4j2.xml", nullptr});
+		// jvmOptions.push_back(JavaVMOption{"-Dlog4j.configurationFile=../log4j2.xml", nullptr});
 
 		jvmArguments.options = jvmOptions.data();
 		jvmArguments.nOptions = jvmOptions.size();
@@ -71,9 +90,7 @@ namespace {
 		JNIEnv *jni;
 		jint jrc = JNI_CreateJavaVM(&jvm, reinterpret_cast<void**>(&jni), &jvmArguments);
 		if(jrc != JNI_OK) {
-			std::cerr << "Failed to create Java virtual machine: " << jrc << std::endl;
-			pthread_cond_broadcast(&arguments->jvmCompleteCondition);
-			return nullptr;
+			throw std::runtime_error{"Failed to create Java virtual machine"};
 		}
 
 		std::string mainClassSpec{arguments->mainClassName};
@@ -83,59 +100,50 @@ namespace {
 
 		jclass mainClass = jni->FindClass(mainClassSpec.c_str());
 		if(mainClass == nullptr) {
-			std::cerr << "Failed to find " << arguments->mainClassName << " class" << std::endl;
-			jni->ExceptionDescribe();
-			pthread_cond_broadcast(&arguments->jvmCompleteCondition);
-			return nullptr;
+			minecraftd::JavaException e{jni};
+			if(e.type() == "java.lang.NoClassDefFoundError") {
+				throw std::runtime_error{"Could not find main class: " + arguments->mainClassName};
+			} else {
+				throw e;
+			}
 		}
 
 		jmethodID mainMethod = jni->GetStaticMethodID(mainClass, "main", "([Ljava/lang/String;)V");
 		if(mainMethod == nullptr) {
-			std::cerr << "Failed to find " << arguments->mainClassName << "#main method" << std::endl;
-			jni->ExceptionDescribe();
-			pthread_cond_broadcast(&arguments->jvmCompleteCondition);
-			return nullptr;
+			minecraftd::JavaException e{jni};
+			if(e.type() == "java.lang.NoSuchMethodError") {
+				throw std::runtime_error{"Could not find `void main(String[])' method in " + arguments->mainClassName};
+			} else {
+				throw e;
+			}
 		}
 
 		jclass stringClass = jni->FindClass("java/lang/String");
 		if(stringClass == nullptr) {
-			std::cerr << "Failed to find java.lang.String class" << std::endl;
-			jni->ExceptionDescribe();
-			pthread_cond_broadcast(&arguments->jvmCompleteCondition);
-			return nullptr;
+			throw minecraftd::JavaException{jni};
 		}
 
 		jobjectArray mainArguments = jni->NewObjectArray(1, stringClass, nullptr);
 		if(mainArguments == nullptr) {
-			std::cerr << "Failed to instantiate main arguments array" << std::endl;
-			jni->ExceptionDescribe();
-			pthread_cond_broadcast(&arguments->jvmCompleteCondition);
-			return nullptr;
+			throw minecraftd::JavaException{jni};
 		}
 
 		jstring noguiString = jni->NewStringUTF("nogui");
 		if(noguiString == nullptr) {
-			std::cerr << "Failed to create string object for 'nogui'" << std::endl;
-			jni->ExceptionDescribe();
-			pthread_cond_broadcast(&arguments->jvmCompleteCondition);
-			return nullptr;
+			throw minecraftd::JavaException{jni};
 		}
 
 		jni->SetObjectArrayElement(mainArguments, 0, noguiString);
 		if(jni->ExceptionCheck()) {
-			std::cerr << "Failed to populate main arguments array" << std::endl;
-			jni->ExceptionDescribe();
-			pthread_cond_broadcast(&arguments->jvmCompleteCondition);
-			return nullptr;
+			throw minecraftd::JavaException{jni};
 		}
 
 		std::cout << "Signalling completion of JVM startup" << std::endl;
-		pthread_cond_broadcast(&arguments->jvmCompleteCondition);
+		ensureConditionBroadcast.signal();
 
 		jni->CallStaticVoidMethod(mainClass, mainMethod, mainArguments);
 		if(jni->ExceptionCheck()) {
-			std::cerr << "Java main thread threw uncaught exception" << std::endl;
-			jni->ExceptionDescribe();
+			throw minecraftd::JavaException{jni};
 		}
 
 		return nullptr;
