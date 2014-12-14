@@ -37,11 +37,11 @@ namespace std {
 
 namespace {
 	const Glib::ustring INTROSPECTION_XML{
-		"<node>"
-		"\t<interface name='net.za.slyfox.Minecraftd1'>"
-		"\t\t<method name='Stop' />"
-		"\t\t<method name='SaveAll' />"
-		"\t</interface>"
+		"<node>\n"
+		"\t<interface name='net.za.slyfox.Minecraftd1'>\n"
+		"\t\t<method name='Stop' />\n"
+		"\t\t<method name='SaveAll' />\n"
+		"\t</interface>\n"
 		"</node>"
 	};
 

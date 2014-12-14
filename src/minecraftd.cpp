@@ -80,6 +80,9 @@ namespace {
 		std::string classPath{"-Djava.class.path=" + arguments->jarPath};
 		jvmOptions.push_back(JavaVMOption{const_cast<char*>(classPath.c_str()), nullptr});
 
+		// For Oracle-based JVMs, give the process a name for tools such as jcmd and jconsole
+		jvmOptions.push_back(JavaVMOption{const_cast<char*>("-Dsun.java.command=minecraftd"), nullptr});
+
 		// jvmOptions.push_back(JavaVMOption{"-Dlog4j.configurationFile=../log4j2.xml", nullptr});
 
 		jvmArguments.options = jvmOptions.data();
