@@ -30,7 +30,7 @@
 #include "pipe.h"
 
 namespace {
-	const std::string DEFAULT_CONFIG_FILE_NAME{SYSCONFDIR "/minecraftd.conf"};
+	const std::string DEFAULT_CONFIG_FILE_NAME{MINECRAFTDCONFDIR "/minecraftd.conf"};
 
 	class EnsureConditionBroadcast {
 

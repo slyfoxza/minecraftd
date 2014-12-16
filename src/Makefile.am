@@ -1,6 +1,4 @@
-gamesdir=$(datadir)/games
-
-AM_CPPFLAGS = -DMINECRAFTJARDIR='"$(minecraftjardir)"' -DSYSCONFDIR='"$(sysconfdir)"'
+AM_CPPFLAGS = -DMINECRAFTJARDIR='"$(minecraftjardir)"' -DMINECRAFTDCONFDIR='"$(minecraftdconfdir)"'
 AM_CXXFLAGS = -std=c++11
 
 bin_PROGRAMS = minecraftd

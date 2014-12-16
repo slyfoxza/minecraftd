@@ -19,6 +19,16 @@ for JNI_INCLUDE_DIR in $JNI_INCLUDE_DIRS; do
 	CPPFLAGS="$CPPFLAGS -I$JNI_INCLUDE_DIR"
 done
 
+AC_ARG_WITH(minecraftdconfdir,
+		AS_HELP_STRING([--with-minecraftdconfdir=DIR],
+				[minecraftd configuration @<:@default=SYSCONFDIR/minecraftd@:>@]))
+if ! test -z "$with_minecraftdconfdir"; then
+	MINECRAFTD_CONF_DIR=$with_minecraftdconfdir
+else
+	MINECRAFTD_CONF_DIR=$sysconfdir/minecraftd
+fi
+AC_SUBST(minecraftdconfdir, $MINECRAFTD_CONF_DIR)
+
 AC_ARG_WITH(minecraftjardir, AS_HELP_STRING([--with-minecraftjardir=DIR], [Minecraft JARs @<:@default=DATADIR/minecraft@:>@]))
 if ! test -z "$with_minecraftjardir"; then
 	MINECRAFT_JAR_DIR=$with_minecraftjardir
