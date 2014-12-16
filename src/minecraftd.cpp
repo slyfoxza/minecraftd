@@ -13,6 +13,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include <dlfcn.h>
@@ -54,9 +55,8 @@ namespace {
 			bool signalled_;
 	};
 
-	void *jvmMain(void *arguments_) {
+	void jvmMain(minecraftd::JvmMainArguments *arguments) {
 
-		minecraftd::JvmMainArguments *arguments = reinterpret_cast<minecraftd::JvmMainArguments*>(arguments_);
 		EnsureConditionBroadcast ensureConditionBroadcast{&arguments->jvmCompleteCondition};
 
 		void *libjvm = dlopen(arguments->libjvmPath.c_str(), RTLD_LAZY);
@@ -150,8 +150,6 @@ namespace {
 		if(jni->ExceptionCheck()) {
 			throw minecraftd::JavaException{jni};
 		}
-
-		return nullptr;
 	}
 
 	pthread_t mainThread;
@@ -240,11 +238,7 @@ int main(int argc, char **argv) {
 	mainThread = pthread_self();
 	std::atexit(onExit);
 
-	pthread_t jvmMainThread;
-	if(pthread_create(&jvmMainThread, nullptr, jvmMain, &jvmMainArguments) != 0) {
-		std::cerr << "Failed to create JVM main thread" << std::endl;
-		return 1;
-	}
+	std::thread jvmMainThread(jvmMain, &jvmMainArguments);
 
 	pthread_mutex_lock(&mutex);
 	std::cout << "Waiting for JVM to complete startup" << std::endl;
@@ -258,6 +252,7 @@ int main(int argc, char **argv) {
 	mainLoop = Glib::MainLoop::create();
 	mainLoop->run();
 
+	jvmMainThread.join();
 	std::cout << "And we're done!" << std::endl;
 	return 0;
 }
