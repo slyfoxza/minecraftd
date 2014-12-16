@@ -22,7 +22,7 @@ JarReader::JarReader(const std::string &jarPath) : jarPath_(jarPath) {
 	int rc;
 	zip_ = zip_open(jarPath.c_str(), 0, &rc);
 	if(zip_ == nullptr) {
-		throw new std::runtime_error{"Failed to open JAR " + jarPath};
+		throw std::runtime_error{"Failed to open JAR " + jarPath};
 	}
 }
 
