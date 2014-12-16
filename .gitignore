@@ -7,5 +7,6 @@ depcomp
 install-sh
 Makefile
 Makefile.in
+minecraftd-*.tar*
 missing
 stamp-h1
