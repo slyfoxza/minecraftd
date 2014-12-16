@@ -196,7 +196,7 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
-	std::string jarPath{GAMESDIR "/minecraft_server.jar"};
+	std::string jarPath{MINECRAFTJARDIR "/minecraft_server.jar"};
 	configFile.lookupValue("jar", jarPath);
 
 	minecraftd::JarReader jarReader{jarPath};

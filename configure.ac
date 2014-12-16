@@ -19,6 +19,14 @@ for JNI_INCLUDE_DIR in $JNI_INCLUDE_DIRS; do
 	CPPFLAGS="$CPPFLAGS -I$JNI_INCLUDE_DIR"
 done
 
+AC_ARG_WITH(minecraftjardir, AS_HELP_STRING([--with-minecraftjardir=DIR], [Minecraft JARs @<:@default=DATADIR/minecraft@:>@]))
+if ! test -z "$with_minecraftjardir"; then
+	MINECRAFT_JAR_DIR=$with_minecraftjardir
+else
+	MINECRAFT_JAR_DIR=$datadir/minecraft
+fi
+AC_SUBST(minecraftjardir, $MINECRAFT_JAR_DIR)
+
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile data/Makefile src/Makefile])
 AC_OUTPUT
