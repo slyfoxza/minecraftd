@@ -11,6 +11,7 @@
 	<header class="container">
 		<h1>Minecraft server daemon</h1>
 	</header>
+
 	<section class="container">
 		<h2>Overview</h2>
 		<p>minecraftd is a daemon that hosts a Java Virtual Machine to run a Minecraft server instance. Its notable
@@ -21,7 +22,64 @@
 			<li>Exposes a <a href="http://www.freedesktop.org/wiki/Software/dbus/">D-Bus</a> interface on the system bus
 				to allow management of the server instance via any D-Bus client.</li>
 		</ul>
+		<h3>Why minecraftd?</h3>
+		<p>Java applications typically do not lend themselves to being run as &ldquo;normal&rdquo; service processes,
+		and Minecraft is no exception, with its control channel being standard input (or rcon). This has resulted in
+		solutions such as using <a href="http://www.gnu.org/software/screen/">GNU Screen</a> to manage the lifecycle
+		of the process, and still allow &ldquo;keyboard&rdquo; input to be sent to the server console.</p>
+		<p>Additionally, because all Java applications are run using the <code>java</code> executable, process
+		identification in tools such as <code>top</code> and <code>ps</code> become much harder when multiple Java
+		processes are running simultaneously on a host.</p>
+		<p>minecraftd addresses both of these concerns. It overrides the process' standard input to a
+		<a href="http://man7.org/linux/man-pages/man2/pipe.2.html">POSIX pipe</a>, which the D-Bus interface writes to
+		when its methods are called. This allows D-Bus clients in other processes to communicate with the Minecraft
+		server console. And because minecraftd is an executable, it will show up in process listings as
+		<code>minecraftd</code>, simplyifying identification of the process.</p>
+		<h3>How does it work?</h3>
+		<p>At the most basic level, minecraftd performs the same task as running <kbd>java -jar
+		minecraft_server.jar</kbd>. It uses a combination of runtime dynamic linking and the
+		<a href="http://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/invocation.html">Java Invocation API</a>
+		to create an instance of the JVM, and executes the Minecraft server code contained in the JAR using that
+		JVM.</p>
+		<p>In addition to that, it registers a D-Bus interface on the system bus, granting D-Bus clients in the system
+		the ability to communicate with the Minecraft server, e.g. sending it the <code>stop</code> command to shutdown
+		the server.</p>
+
+		<h2>Configuration</h2>
+		<p>Configuration of minecraftd, and the JVM it hosts, is driven by the contents of the
+		<code>minecraftd.conf</code> file. An example configuration enabling use of the concurrent mark-and-sweep
+		garbage collector in the JVM is given below:</p>
+		<pre><code>jvm: {
+	arguments = [
+		"-XX:+UseConcMarkSweepGC"
+	];
+};</code></pre>
+		<p>The syntax of the configuration file is that of the <a href="http://www.hyperrealm.com/libconfig/">
+		libconfig</a> library.</p>
+
+		<h2>D-Bus Interface</h2>
+		<p>minecraftd's D-Bus interface is registered on the system bus with the following values:</p>
+		<table class="table">
+			<thead><tr><th>Name</th><th>Value</th></tr></thead>
+			<tbody>
+				<tr><td>Bus name</td><td><code>net.za.slyfox.Minecraftd1</code></td></tr>
+				<tr><td>Object name</td><td><code>/net/za/slyfox/Minecraftd1</code></td></tr>
+				<tr><td>Interface name</td><td><code>net.za.slyfox.Minecraftd1</code></td></tr>
+			</tbody>
+		</table>
+		<p>The <code>Minecraftd1</code> interface consists of the following methods:</p>
+		<table class="table">
+			<thead><tr><th>Method</th><th>Description</th></tr></thead>
+			<tbody>
+				<tr><td><code>SaveAll</code></td><td>Sends the <code>save-all</code> command to the Minecraft server,
+				causing all chunks to be saved to storage.</td></tr>
+				<tr><td><code>Stop</code></td><td>Sends the <code>stop</code> command to the Minecraft server,
+				gracefully shutting it down. Typically, the service itself would be stopped instead of using this
+				command directly, e.g. <kbd>systemctl stop minecraftd</kbd>.</td></tr>
+			</tbody>
+		</table>
 	</section>
+
 	<footer class="container">
 		<p>Copyright 2014 Philip Cronje</p>
 	</footer>
