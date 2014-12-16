@@ -12,6 +12,7 @@
  */
 #pragma once
 
+#include <list>
 #include <stdexcept>
 
 #include <glibmm.h>
@@ -25,6 +26,7 @@ namespace minecraftd {
 		JvmMainArguments(const std::string &libjvmPath_, const std::string &jarPath_, const std::string &mainClassName_)
 			: jarPath{jarPath_}, libjvmPath{libjvmPath_}, mainClassName{mainClassName_} { }
 
+		std::list<std::string> additionalArguments;
 		const std::string jarPath;
 		pthread_cond_t jvmCompleteCondition;
 		const std::string libjvmPath;

@@ -83,6 +83,10 @@ namespace {
 
 		// jvmOptions.push_back(JavaVMOption{"-Dlog4j.configurationFile=../log4j2.xml", nullptr});
 
+		for(auto argument: arguments->additionalArguments) {
+			jvmOptions.push_back(JavaVMOption{const_cast<char*>(argument.c_str()), nullptr});
+		}
+
 		jvmArguments.options = jvmOptions.data();
 		jvmArguments.nOptions = jvmOptions.size();
 		jvmArguments.ignoreUnrecognized = false;
@@ -221,6 +225,16 @@ int main(int argc, char **argv) {
 	if(pthread_cond_init(&jvmMainArguments.jvmCompleteCondition, nullptr) != 0) {
 		std::cerr << "Failed to create JVM completion condition" << std::endl;
 		return 1;
+	}
+
+	try {
+		libconfig::Setting &additionalArguments = configFile.lookup("jvm.arguments");
+		const int count = additionalArguments.getLength();
+		for(int i = 0; i < count; ++i) {
+			jvmMainArguments.additionalArguments.push_back(additionalArguments[i]);
+		}
+	} catch(libconfig::SettingNotFoundException&) {
+		// No additional arguments to pass
 	}
 
 	mainThread = pthread_self();
