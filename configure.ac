@@ -10,8 +10,9 @@ AC_ARG_WITH(systemd, AS_HELP_STRING([--with-systemd], [Add systemd support @<:@d
 		[with_systemd=$withval], [with_systemd=yes])
 AM_CONDITIONAL(HAVE_SYSTEMD, [test "x$with_systemd" = "xyes"])
 
-PKG_CHECK_MODULES([GLIBMM], [glibmm-2.4 giomm-2.4])
-PKG_CHECK_MODULES([LIBCONFIG], [libconfig++])
+PKG_CHECK_MODULES(glibmm, [glibmm-2.4 giomm-2.4])
+PKG_CHECK_MODULES(libconfig, [libconfig++])
+PKG_CHECK_MODULES(libzip, [libzip])
 
 AX_JNI_INCLUDE_DIR
 for JNI_INCLUDE_DIR in $JNI_INCLUDE_DIRS; do
