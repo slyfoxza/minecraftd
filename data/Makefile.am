@@ -1,6 +1,9 @@
-CLEANFILES =
-EXTRA_DIST =
+CLEANFILES = minecraftd.conf
+EXTRA_DIST = minecraftd.conf.in
 systemdsystemunit =
+
+minecraftd.conf: minecraftd.conf.in
+	$(SED) -e 's,[@]datadir[@],$(datadir),g' <$< >$@
 
 if HAVE_SYSTEMD
 minecraftd.service: minecraftd.service.in

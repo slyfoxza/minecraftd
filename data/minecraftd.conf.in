@@ -1,0 +1,9 @@
+# jar = "@datadir@/games/minecraft_server.jar";
+
+jvm: {
+	# Specifies additional arguments to pass directly to the Java Virtual Machine
+	arguments = [
+		"-Xms1024M",
+		"-Xmx1024M"
+	];
+};
