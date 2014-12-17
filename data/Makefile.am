@@ -23,3 +23,4 @@ install-data-hook: minecraftd.conf
 		chmod 755 $(DESTDIR)$(minecraftdconfdir); \
 	fi
 	$(INSTALL_SCRIPT) minecraftd.conf $(DESTDIR)$(minecraftdconfdir)/minecraftd.conf
+	chmod 644 $(DESTDIR)$(minecraftdconfdir)/minecraftd.conf
