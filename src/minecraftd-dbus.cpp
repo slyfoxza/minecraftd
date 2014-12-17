@@ -10,6 +10,7 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
+#include <functional>
 #include <iostream>
 #include <mutex>
 #include <unordered_map>
@@ -39,13 +40,18 @@ namespace {
 	const Glib::ustring INTROSPECTION_XML{
 		"<node>\n"
 		"\t<interface name='net.za.slyfox.Minecraftd1'>\n"
-		"\t\t<method name='Stop' />\n"
 		"\t\t<method name='SaveAll' />\n"
+		"\t\t<method name='SaveOff' />\n"
+		"\t\t<method name='SaveOn' />\n"
+		"\t\t<method name='Stop' />\n"
 		"\t</interface>\n"
 		"</node>"
 	};
 
-	std::unordered_map<Glib::ustring, sigc::slot<void, const Glib::RefPtr<Gio::DBus::MethodInvocation>&>> handlerMap{2};
+	/* The bucket_count value used here should result in no hash collisions, if possibly at the expense of some wasted
+	 * memory. */
+	std::unordered_map<Glib::ustring,
+		std::function<void(Minecraftd1*, const Glib::RefPtr<Gio::DBus::MethodInvocation>&)>> handlerMap{11};
 
 	std::once_flag handlerMapInitFlag;
 
@@ -73,9 +79,12 @@ Minecraftd1::Minecraftd1(const Glib::ustring &objectName, const PosixPipe &pipe)
 	pipe_(pipe),
 	vtable_{sigc::mem_fun(*this, &Minecraftd1::onMethodCall)} {
 
-	std::call_once(handlerMapInitFlag, [this]{
-		handlerMap["SaveAll"] = sigc::mem_fun(*this, &Minecraftd1::handleSaveAll);
-		handlerMap["Stop"] = sigc::mem_fun(*this, &Minecraftd1::handleStop);
+	std::call_once(handlerMapInitFlag, []{
+		using namespace std::placeholders;
+		handlerMap.emplace("SaveAll", std::bind(&Minecraftd1::handleSimpleCommand, _1, _2, "save-all"));
+		handlerMap.emplace("SaveOn", std::bind(&Minecraftd1::handleSimpleCommand, _1, _2, "save-on"));
+		handlerMap.emplace("SaveOff", std::bind(&Minecraftd1::handleSimpleCommand, _1, _2, "save-off"));
+		handlerMap.emplace("Stop", std::bind(&Minecraftd1::handleSimpleCommand, _1, _2, "stop"));
 
 		for(size_t i = 0; i < handlerMap.bucket_count(); ++i) {
 			if(handlerMap.bucket_size(i) > 1) {
@@ -101,20 +110,19 @@ void Minecraftd1::onMethodCall(const Glib::RefPtr<Gio::DBus::Connection> &connec
 
 	auto slot = handlerMap.find(methodName);
 	if(slot != handlerMap.end()) {
-		slot->second(invocation);
+		slot->second(this, invocation);
 	} else {
 		invocation->return_error(Gio::DBus::Error{Gio::DBus::Error::UNKNOWN_METHOD, "Method does not exist."});
 	}
 }
 
-void Minecraftd1::handleSaveAll(const Glib::RefPtr<Gio::DBus::MethodInvocation> &invocation) {
+void Minecraftd1::handleSimpleCommand(const Glib::RefPtr<Gio::DBus::MethodInvocation> &invocation, std::string command)
+	const {
 
-	writeAll(pipe_.writeEnd(), "save-all\n");
+	if(*command.crbegin() != '\n') {
+		command.push_back('\n');
+	}
+	writeAll(pipe_.writeEnd(), command.c_str());
 	invocation->return_value(Glib::VariantContainerBase{});
 }
 
-void Minecraftd1::handleStop(const Glib::RefPtr<Gio::DBus::MethodInvocation> &invocation) {
-
-	writeAll(pipe_.writeEnd(), "stop\n");
-	invocation->return_value(Glib::VariantContainerBase{});
-}

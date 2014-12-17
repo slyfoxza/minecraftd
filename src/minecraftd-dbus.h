@@ -30,8 +30,12 @@ namespace minecraftd {
 					const Glib::ustring &methodName, const Glib::VariantContainerBase &parameters,
 					const Glib::RefPtr<Gio::DBus::MethodInvocation> &invocation);
 
-			void handleSaveAll(const Glib::RefPtr<Gio::DBus::MethodInvocation> &invocation);
-			void handleStop(const Glib::RefPtr<Gio::DBus::MethodInvocation> &invocation);
+			/**
+			 * Implements a handler for simple commands that simply write the given command to the write end of pipe_
+			 * and return an empty value.
+			 */
+			void handleSimpleCommand(const Glib::RefPtr<Gio::DBus::MethodInvocation> &invocation, std::string command)
+				const;
 
 			static const Glib::ustring INTERFACE;
 
