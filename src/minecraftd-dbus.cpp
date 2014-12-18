@@ -60,7 +60,7 @@ namespace {
 		const std::string::size_type size = buffer_.size();
 		const char *buffer = buffer_.c_str();
 
-		ssize_t totalWritten = 0;
+		size_t totalWritten = 0;
 		while(totalWritten < size) {
 			ssize_t written = write(fd, buffer + totalWritten, size - totalWritten);
 			if(written == -1) {

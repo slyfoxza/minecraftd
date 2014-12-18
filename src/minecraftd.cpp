@@ -99,7 +99,7 @@ namespace {
 		}
 
 		std::string mainClassSpec{arguments->mainClassName};
-		for(int i = mainClassSpec.find('.'); i != std::string::npos; i = mainClassSpec.find('.', i)) {
+		for(size_t i = mainClassSpec.find('.'); i != std::string::npos; i = mainClassSpec.find('.', i)) {
 			mainClassSpec[i] = '/';
 		}
 
