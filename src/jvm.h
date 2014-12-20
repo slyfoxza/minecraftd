@@ -23,10 +23,13 @@ namespace minecraftd {
 
 	struct JvmMainArguments {
 
-		JvmMainArguments(const std::string &libjvmPath_, const std::string &jarPath_, const std::string &mainClassName_)
-			: jarPath{jarPath_}, libjvmPath{libjvmPath_}, mainClassName{mainClassName_} { }
+		JvmMainArguments(const std::string &libjvmPath_, const std::string &jarPath_, const std::string &mainClassName_,
+				const std::string &customLogConfiguration_)
+			: customLogConfiguration{customLogConfiguration_}, jarPath{jarPath_}, libjvmPath{libjvmPath_},
+			mainClassName{mainClassName_} { }
 
 		std::list<std::string> additionalArguments;
+		const std::string customLogConfiguration;
 		const std::string jarPath;
 		pthread_cond_t jvmCompleteCondition;
 		const std::string libjvmPath;

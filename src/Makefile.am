@@ -1,4 +1,7 @@
-AM_CPPFLAGS = -DMINECRAFTJARDIR='"$(minecraftjardir)"' -DMINECRAFTDCONFDIR='"$(minecraftdconfdir)"'
+AM_CPPFLAGS = -DJVMLIBPATH='"$(jvmlibpath)"' \
+	-DMINECRAFTDCONFDIR='"$(minecraftdconfdir)"' \
+	-DMINECRAFTJARDIR='"$(minecraftjardir)"' \
+	-DMINECRAFTSERVERDIR='"$(minecraftserverdir)"'
 AM_CXXFLAGS = -std=c++11
 
 bin_PROGRAMS = minecraftd

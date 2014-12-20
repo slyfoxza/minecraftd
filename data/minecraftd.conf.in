@@ -1,7 +1,25 @@
-# jar = "@datadir@/games/minecraft_server.jar";
+/* Specify the directory containing the server state (world data, etc.). */
+# serverDirectory = "@minecraftserverdir@";
 
+/* Specify the path to the JAR containing the Minecraft server code to execute. */
+# jar = "@minecraftjardir@/minecraft_server.jar";
+
+/* Specify an alternate Log4J2 configuration to use. The value of this will be set as the log4j2.configuration Java
+ * system property. */
+# customLogConfiguration = "@minecraftdconfdir@/log4j2.xml";
+
+/* To disable custom logging and use the Log4J2 configuration packaged in the Minecraft server JAR, uncomment the
+ * following line (be warned, however, that with systemd, this will cause the output of the Minecraft server to be
+ * logged to the journal!):
+ */
+# customLogConfiguration = false;
+
+/* Configuration relating to the Java Virtual Machine. */
 jvm: {
-	# Specifies additional arguments to pass directly to the Java Virtual Machine
+	/* Specifies the path to the dynamic library that exports the Java Invocation API symbols. */
+	# jvmLibrary = "@jvmlibpath@";
+
+	/* Specifies additional arguments to pass directly to the Java Virtual Machine. */
 	arguments = [
 		"-Xms1024M",
 		"-Xmx1024M"

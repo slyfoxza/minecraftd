@@ -16,6 +16,8 @@
 #include <thread>
 #include <vector>
 
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <dlfcn.h>
 #include <pthread.h>
 #include <unistd.h>
@@ -32,6 +34,7 @@
 
 namespace {
 	const std::string DEFAULT_CONFIG_FILE_NAME{MINECRAFTDCONFDIR "/minecraftd.conf"};
+	const std::string DEFAULT_LOG_CONFIG_FILENAME{MINECRAFTDCONFDIR "/log4j2.xml"};
 
 	class EnsureConditionBroadcast {
 
@@ -81,7 +84,11 @@ namespace {
 		// For Oracle-based JVMs, give the process a name for tools such as jcmd and jconsole
 		jvmOptions.push_back(JavaVMOption{const_cast<char*>("-Dsun.java.command=minecraftd"), nullptr});
 
-		// jvmOptions.push_back(JavaVMOption{"-Dlog4j.configurationFile=../log4j2.xml", nullptr});
+		std::string log4jOption{"-Dlog4j.configurationFile="};
+		if(!arguments->customLogConfiguration.empty()) {
+			log4jOption += arguments->customLogConfiguration;
+			jvmOptions.push_back(JavaVMOption{const_cast<char*>(log4jOption.c_str()), nullptr});
+		}
 
 		for(auto argument: arguments->additionalArguments) {
 			jvmOptions.push_back(JavaVMOption{const_cast<char*>(argument.c_str()), nullptr});
@@ -194,8 +201,39 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
+	std::string serverDirectory{MINECRAFTSERVERDIR};
+	configFile.lookupValue("serverDirectory", serverDirectory);
+	if(chdir(serverDirectory.c_str()) != 0) {
+		if(errno == ENOENT) {
+			// TODO: Create directory recursively
+			if(mkdir(serverDirectory.c_str(), 0777) != 0) {
+				throw std::system_error(errno, std::system_category());
+			}
+		} else {
+			throw std::system_error(errno, std::system_category());
+		}
+	}
+
 	std::string jarPath{MINECRAFTJARDIR "/minecraft_server.jar"};
 	configFile.lookupValue("jar", jarPath);
+
+	std::string jvmLibPath{JVMLIBPATH};
+	configFile.lookupValue("jvm.jvmLibrary", jvmLibPath);
+
+	std::string logConfigFileName{DEFAULT_LOG_CONFIG_FILENAME};
+	try {
+		libconfig::Setting &customLogConfiguration = configFile.lookup("customLogConfiguration");
+		if(customLogConfiguration.getType() == libconfig::Setting::TypeBoolean) {
+			if(!static_cast<bool>(customLogConfiguration)) {
+				logConfigFileName.clear();
+				logConfigFileName.shrink_to_fit();
+			}
+		} else {
+			logConfigFileName = static_cast<const char*>(customLogConfiguration);
+		}
+	} catch(libconfig::SettingNotFoundException&) {
+		// No custom logging configuration
+	}
 
 	minecraftd::JarReader jarReader{jarPath};
 	std::string mainClassName = jarReader.getMainClassName();
@@ -218,8 +256,7 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
-	minecraftd::JvmMainArguments jvmMainArguments{"/etc/alternatives/jre/lib/amd64/server/libjvm.so", jarPath,
-		mainClassName};
+	minecraftd::JvmMainArguments jvmMainArguments{jvmLibPath, jarPath, mainClassName, logConfigFileName};
 	if(pthread_cond_init(&jvmMainArguments.jvmCompleteCondition, nullptr) != 0) {
 		std::cerr << "Failed to create JVM completion condition" << std::endl;
 		return 1;

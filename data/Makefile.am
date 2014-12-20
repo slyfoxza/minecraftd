@@ -1,9 +1,19 @@
-CLEANFILES = minecraftd.conf
-EXTRA_DIST = minecraftd.conf.in
+conf_files = log4j2.xml minecraftd.conf
+
+CLEANFILES = $(conf_files)
+EXTRA_DIST = log4j2.xml.in minecraftd.conf.in
 systemdsystemunit =
 
+log4j2.xml: log4j2.xml.in
+	$(SED) -e 's,[@]logdir[@],$(logdir),g' <$< >$@
+
 minecraftd.conf: minecraftd.conf.in
-	$(SED) -e 's,[@]datadir[@],$(datadir),g' <$< >$@
+	$(SED) \
+		-e 's,[@]jvmlibpath[@],$(jvmlibpath),g' \
+		-e 's,[@]minecraftdconfdir[@],$(minecraftdconfdir),g' \
+		-e 's,[@]minecraftjardir[@],$(minecraftjardir),g' \
+		-e 's,[@]minecraftserverdir[@],$(minecraftserverdir),g' \
+		<$< >$@
 
 if HAVE_SYSTEMD
 minecraftd.service: minecraftd.service.in
@@ -15,12 +25,14 @@ EXTRA_DIST += minecraftd.service.in
 
 uninstall-hook:
 	$(RM) \
+		$(DESTDIR)$(minecraftdconfdir)/log4j2.xml
 		$(DESTDIR)$(minecraftdconfdir)/minecraftd.conf
 
-install-data-hook: minecraftd.conf
+install-data-hook: $(conf_files) $(systemdsystemunit)
 	if test '!' -d $(DESTDIR)$(minecraftdconfdir); then \
 		$(mkinstalldirs) $(DESTDIR)$(minecraftdconfdir); \
 		chmod 755 $(DESTDIR)$(minecraftdconfdir); \
 	fi
-	$(INSTALL_SCRIPT) minecraftd.conf $(DESTDIR)$(minecraftdconfdir)/minecraftd.conf
-	chmod 644 $(DESTDIR)$(minecraftdconfdir)/minecraftd.conf
+	for conf_file in $(conf_files); do \
+		$(INSTALL_DATA) $$conf_file $(DESTDIR)$(minecraftdconfdir)/$$conf_file; \
+	done
