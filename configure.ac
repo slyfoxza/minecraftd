@@ -1,4 +1,5 @@
 AC_INIT([minecraftd], [1.0], [syke107@gmail.com])
+AC_CONFIG_MACRO_DIRS([m4])
 AM_INIT_AUTOMAKE([foreign -Wall -Werror])
 
 AC_CANONICAL_HOST
@@ -14,7 +15,7 @@ PKG_CHECK_MODULES(glibmm, [glibmm-2.4 giomm-2.4])
 PKG_CHECK_MODULES(libconfig, [libconfig++])
 PKG_CHECK_MODULES(libzip, [libzip])
 
-AX_JNI_INCLUDE_DIR
+MCD_JNI_INCLUDE_DIR
 for JNI_INCLUDE_DIR in $JNI_INCLUDE_DIRS; do
 	CPPFLAGS="$CPPFLAGS -I$JNI_INCLUDE_DIR"
 done
