@@ -28,7 +28,7 @@ JarReader::JarReader(const std::string &jarPath) : jarPath_(jarPath) {
 
 JarReader::~JarReader() {
 
-	zip_discard(zip_);
+	zip_close(zip_);
 }
 
 std::string JarReader::getMainClassName() {
