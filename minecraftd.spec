@@ -1,4 +1,4 @@
-%global commit 3e653d766f8d383ce6f21d07b58592ea7696ddee
+%global commit 6579c6c17aea3bf8e9d72cbe4e35eb4b3e11dce2
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 
 Name:           minecraftd
@@ -14,6 +14,7 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 Requires:       java-headless jpackage-utils
 BuildRequires:  autoconf automake
 BuildRequires:  pkgconfig(giomm-2.4) pkgconfig(libconfig) pkgconfig(libzip)
+BuildRequires:  zlib-devel
 BuildRequires:  java-devel
 
 %description
