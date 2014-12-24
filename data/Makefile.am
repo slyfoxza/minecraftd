@@ -36,3 +36,8 @@ install-data-hook: $(conf_files) $(systemdsystemunit)
 	for conf_file in $(conf_files); do \
 		$(INSTALL_DATA) $$conf_file $(DESTDIR)$(minecraftdconfdir)/$$conf_file; \
 	done
+	if test -n "$(systemdsystemunit)" -a '!' -d $(DESTDIR)$(SYSTEMD_SYSTEM_UNIT_DIR); then \
+		$(mkinstalldirs) $(DESTDIR)$(SYSTEMD_SYSTEM_UNIT_DIR); \
+		chmod 755 $(DESTDIR)$(SYSTEMD_SYSTEM_UNIT_DIR); \
+		$(INSTALL_DATA) $(systemdsystemunit) $(DESTDIR)$(SYSTEMD_SYSTEM_UNIT_DIR)/$(systemdsystemunit); \
+	fi

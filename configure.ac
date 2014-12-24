@@ -6,10 +6,17 @@ AC_CANONICAL_HOST
 
 AC_PROG_CXX
 AC_PROG_SED
+PKG_PROG_PKG_CONFIG
 
 AC_ARG_WITH(systemd, AS_HELP_STRING([--with-systemd], [Add systemd support @<:@default=yes@:>@]),
 		[with_systemd=$withval], [with_systemd=yes])
 AM_CONDITIONAL(HAVE_SYSTEMD, [test "x$with_systemd" = "xyes"])
+AC_ARG_WITH(systemdsystemunitdir, AS_HELP_STRING([--with-systemdsystemunitdir=DIR], [systemd system unit files]),
+		[with_systemdsystemunitdir=$withval],
+		[with_systemdsystemunitdir=$($PKG_CONFIG --variable=systemdsystemunitdir systemd)])
+if test "x$with_systemdsystemunitdir" != "xno"; then
+	AC_SUBST(SYSTEMD_SYSTEM_UNIT_DIR, [$with_systemdsystemunitdir])
+fi
 
 PKG_CHECK_MODULES(glibmm, [glibmm-2.4 giomm-2.4])
 PKG_CHECK_MODULES(libconfig, [libconfig++])

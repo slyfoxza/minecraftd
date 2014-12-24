@@ -1,7 +1,8 @@
 [Unit]
-Description=Minecraft daemon
+Description=Minecraft server daemon
 
 [Service]
 ExecStart=@bindir@/minecraftd
+ExecStop=dbus-send --system --dest=net.za.slyfox.Minecraftd1 /net/za/slyfox/Minecraftd1 net.za.slyfox.Minecraftd1.Stop
 BusName=net.za.slyfox.Minecraftd1
 
